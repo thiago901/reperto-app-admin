@@ -1,5 +1,13 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
-import { onIdTokenChanged, signInWithEmailAndPassword, signOut, type User } from 'firebase/auth';
+import {
+  GoogleAuthProvider,
+  onIdTokenChanged,
+  sendPasswordResetEmail,
+  signInWithEmailAndPassword,
+  signInWithPopup,
+  signOut,
+  type User,
+} from 'firebase/auth';
 import { auth } from './firebase';
 import { api, ApiError, DEMO } from './api';
 
@@ -13,6 +21,8 @@ type State =
 interface AuthValue {
   state: State;
   signIn: (email: string, password: string) => Promise<void>;
+  signInWithGoogle: () => Promise<void>;
+  resetPassword: (email: string) => Promise<void>;
   signOut: () => Promise<void>;
 }
 
@@ -58,6 +68,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     signIn: async (email, password) => {
       await signInWithEmailAndPassword(auth, email.trim(), password);
     },
+    // Mesmo e-mail = mesma conta: o Firebase liga o Google à conta que já existe.
+    signInWithGoogle: async () => {
+      const provider = new GoogleAuthProvider();
+      provider.setCustomParameters({ prompt: 'select_account' });
+      await signInWithPopup(auth, provider);
+    },
+    resetPassword: (email) => sendPasswordResetEmail(auth, email.trim()),
     signOut: () => signOut(auth),
   };
 

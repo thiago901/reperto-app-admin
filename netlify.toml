@@ -1,0 +1,9 @@
+[build]
+  command = "npm run build"
+  publish = "dist"
+
+# Variáveis VITE_* vão para o JavaScript do navegador por definição: nenhuma é
+# segredo (a chave web do Firebase é pública). Sem isto, o "secrets scanning"
+# do Netlify derruba o build ao achar, por exemplo, "reperto" no código.
+[build.environment]
+  SECRETS_SCAN_OMIT_KEYS = "VITE_APP_ID,VITE_API_BASE_URL,VITE_FIREBASE_API_KEY,VITE_FIREBASE_APP_ID,VITE_FIREBASE_AUTH_DOMAIN,VITE_FIREBASE_PROJECT_ID"

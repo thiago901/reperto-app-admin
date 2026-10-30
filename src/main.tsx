@@ -11,6 +11,8 @@ import { UsersPage } from './pages/UsersPage';
 import { GroupsPage } from './pages/GroupsPage';
 import { StemsPage } from './pages/StemsPage';
 import { SystemPage } from './pages/SystemPage';
+import { SupportPage } from './pages/SupportPage';
+import { FinancePage } from './pages/FinancePage';
 import './index.css';
 
 const queryClient = new QueryClient({
@@ -34,6 +36,8 @@ function Gate() {
         <Route path="usuarios" element={<UsersPage />} />
         <Route path="grupos" element={<GroupsPage />} />
         <Route path="faixas" element={<StemsPage />} />
+        <Route path="atendimento" element={<SupportPage />} />
+        <Route path="financas" element={<FinancePage />} />
         <Route path="sistema" element={<SystemPage />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Route>

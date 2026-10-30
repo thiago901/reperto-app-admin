@@ -226,7 +226,11 @@ export function OverviewPage() {
       <div className="mt-4 grid grid-cols-2 gap-3 lg:grid-cols-4">
         <MiniStat label="Voltaram em 7 d" value={num(o.users.returning7)} hint="contas com mais de 30 dias" />
         <MiniStat label="E-mail confirmado" value={pct(o.users.verified, o.users.total)} meter={[o.users.verified, o.users.total]} />
-        <MiniStat label="Aparelhos com notificação" value={num(o.pushDevices)} />
+        <MiniStat
+          label="Mensagens aguardando"
+          value={num(o.support?.new ?? 0)}
+          hint={`${num(o.support?.total ?? 0)} no total`}
+        />
         <MiniStat label="Contas excluídas (30 d)" value={num(o.deletions30)} />
       </div>
     </>

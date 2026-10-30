@@ -1,4 +1,17 @@
-import type { AdminGroup, AdminStemJob, AdminUser, DayPoint, Overview, PlanStatus, SystemInfo } from './types';
+import type {
+  AdminGroup,
+  AdminStemJob,
+  AdminUser,
+  DayPoint,
+  FinanceEntry,
+  FinanceEntryInput,
+  FinanceMonth,
+  FinanceSettings,
+  Overview,
+  PlanStatus,
+  SystemInfo,
+  Ticket,
+} from './types';
 
 /**
  * Dados fictícios para ver o painel sem backend (`npm run dev` com
@@ -168,6 +181,7 @@ const overview: Overview = {
     stems: summary,
     deletions30: 1,
     pushDevices: 48,
+    support: { new: 3, answered: 2, total: 7 },
   },
   daily,
   stemsByMonth: byMonth,
@@ -201,8 +215,121 @@ const system: SystemInfo = {
   },
 };
 
-export function demoResponse(path: string): unknown {
+/* ----------------------------------------------------------- atendimento --- */
+
+const TEXTS: [Ticket['type'], string][] = [
+  ['problem', 'Quando abro a aba Faixas no celular o áudio fica travando depois de uns 30 segundos.'],
+  ['suggestion', 'Seria ótimo poder exportar a escala do mês em PDF para mandar no grupo do WhatsApp.'],
+  ['complaint', 'Paguei o plano mas ainda aparece que estou no teste grátis.'],
+  ['praise', 'O modo apresentação salvou nosso ensaio de domingo, parabéns!'],
+  ['question', 'Como faço para transpor a cifra só para o violão?'],
+  ['suggestion', 'Dava para ter um metrônomo junto do player?'],
+  ['problem', 'Não consigo convidar uma pessoa pelo link, diz que expirou.'],
+];
+let tickets: Ticket[] = TEXTS.map(([type, text], i) => {
+  const u = users[i * 3];
+  const at = now - i * 0.9 * DAY - 3600_000;
+  const answered = i === 3 || i === 4;
+  return {
+    id: `t${i}`,
+    uid: u.uid,
+    email: u.email,
+    name: u.name,
+    type,
+    status: i === 5 ? 'resolved' : answered ? 'answered' : 'new',
+    messages: [
+      { from: 'user', text, at },
+      ...(answered ? [{ from: 'admin' as const, text: 'Oi! Obrigado por escrever. Já estamos vendo isso.', at: at + 3600_000 }] : []),
+    ],
+    context: { platform: i % 2 ? 'android' : 'web', standalone: String(i % 2 === 0), screen: '412x915' },
+    unreadForUser: answered,
+    createdAt: at,
+    updatedAt: answered ? at + 3600_000 : at,
+  };
+});
+
+/* -------------------------------------------------------------- finanças --- */
+
+let financeSettings: FinanceSettings = { planPriceBrl: 19.9, usdToBrl: 5.5, stripeFeePct: 4.99, playFeePct: 15 };
+let entries: FinanceEntry[] = [
+  { id: 'e1', createdAt: now, kind: 'expense', name: 'Supabase', category: 'infra', amount: 25, currency: 'USD', recurrence: 'monthly', start: byMonth[1].month, end: null },
+  { id: 'e2', createdAt: now, kind: 'expense', name: 'Domínio repertoapp.com.br', category: 'infra', amount: 40, currency: 'BRL', recurrence: 'yearly', start: byMonth[0].month, end: null },
+  { id: 'e3', createdAt: now, kind: 'expense', name: 'Netlify Pro', category: 'infra', amount: 19, currency: 'USD', recurrence: 'monthly', start: byMonth[3].month, end: null },
+  { id: 'e4', createdAt: now, kind: 'expense', name: 'Anúncio Instagram', category: 'marketing', amount: 150, currency: 'BRL', recurrence: 'once', start: byMonth[4].month, end: null },
+  { id: 'e5', createdAt: now, kind: 'revenue', name: 'Oferta da igreja parceira', category: 'other', amount: 200, currency: 'BRL', recurrence: 'once', start: byMonth[5].month, end: null },
+];
+
+function financeMonths(): FinanceMonth[] {
+  const months = Array.from({ length: 12 }, (_, i) => {
+    const d = new Date(now);
+    d.setUTCDate(1);
+    d.setUTCMonth(d.getUTCMonth() - (11 - i));
+    return d.toISOString().slice(0, 7);
+  });
+  return months.map((month, i) => {
+    const subs = i < 6 ? null : { stripe: 3 + i - 6, play: 1 + Math.floor((i - 6) / 2) };
+    const n = subs ? subs.stripe + subs.play : 0;
+    const subscriptions = n * financeSettings.planPriceBrl;
+    const storeFees = subs
+      ? subs.stripe * financeSettings.planPriceBrl * (financeSettings.stripeFeePct / 100) +
+        subs.play * financeSettings.planPriceBrl * (financeSettings.playFeePct / 100)
+      : 0;
+    const byCategory: Record<string, number> = {};
+    let other = 0;
+    for (const e of entries) {
+      if (month < e.start || (e.end && month > e.end)) continue;
+      const brl = e.currency === 'USD' ? e.amount * financeSettings.usdToBrl : e.amount;
+      const v = e.recurrence === 'monthly' ? brl : e.recurrence === 'yearly' ? brl / 12 : month === e.start ? brl : 0;
+      if (!v) continue;
+      if (e.kind === 'revenue') other += v;
+      else byCategory[e.category] = (byCategory[e.category] ?? 0) + v;
+    }
+    const replicate = (byMonth.find((m) => m.month === month)?.costUsd ?? 0) * financeSettings.usdToBrl;
+    if (replicate) byCategory.ia = (byCategory.ia ?? 0) + replicate;
+    const exp = Object.values(byCategory).reduce((a, b) => a + b, 0) + storeFees;
+    const r2 = (x: number) => Math.round(x * 100) / 100;
+    return {
+      month,
+      subscribers: subs,
+      revenue: { subscriptions: r2(subscriptions), other: r2(other), total: r2(subscriptions + other) },
+      expenses: { byCategory, storeFees: r2(storeFees), replicate: r2(replicate), total: r2(exp) },
+      net: r2(subscriptions + other - exp),
+    };
+  });
+}
+
+export function demoResponse(path: string, init?: { method?: string; body?: unknown }): unknown {
   const p = path.split('?')[0];
+  const method = init?.method ?? 'GET';
+  const body = init?.body as Record<string, unknown> | undefined;
+  if (p === '/admin/support') return { generatedAt: Date.now(), tickets };
+  if (p.startsWith('/admin/support/')) {
+    const id = p.split('/').pop();
+    tickets = tickets.map((t) => {
+      if (t.id !== id) return t;
+      const next = { ...t, updatedAt: Date.now() };
+      if (body?.reply) {
+        next.messages = [...t.messages, { from: 'admin', text: String(body.reply), at: Date.now() }];
+        next.status = 'answered';
+      }
+      if (body?.status) next.status = body.status as Ticket['status'];
+      if (body?.note !== undefined) next.note = String(body.note);
+      return next;
+    });
+    return { ok: true };
+  }
+  if (p === '/admin/finance') return { generatedAt: Date.now(), settings: financeSettings, entries, months: financeMonths() };
+  if (p === '/admin/finance/settings') {
+    financeSettings = body as unknown as FinanceSettings;
+    return { ok: true };
+  }
+  if (p.startsWith('/admin/finance/entries')) {
+    const id = p.split('/')[4];
+    if (method === 'DELETE') entries = entries.filter((e) => e.id !== id);
+    else if (id) entries = entries.map((e) => (e.id === id ? { ...e, ...(body as unknown as FinanceEntryInput) } : e));
+    else entries = [...entries, { ...(body as unknown as FinanceEntryInput), id: `e${Date.now()}`, createdAt: Date.now() }];
+    return { ok: true };
+  }
   if (p === '/admin/check') return { admin: true, email: 'admin@exemplo.com', emailVerified: true };
   if (p === '/admin/overview') return overview;
   if (p === '/admin/users') return { generatedAt: now, users };

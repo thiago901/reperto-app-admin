@@ -150,10 +150,14 @@ export function LineChart({
   height = 200,
   label,
   axisEvery = 1,
+  format = String,
+  axisFormat = format,
 }: {
   axis: string[];
   titles: string[];
   series: { name: string; color: string; values: number[] }[];
+  format?: (v: number) => string;
+  axisFormat?: (v: number) => string;
   height?: number;
   label: string;
   axisEvery?: number;
@@ -191,7 +195,7 @@ export function LineChart({
               <g key={t}>
                 <line x1={PAD.left} x2={width - PAD.right} y1={y(t)} y2={y(t)} stroke="rgba(255,255,255,0.06)" />
                 <text x={PAD.left - 8} y={y(t)} dy="0.32em" textAnchor="end" className="fill-zinc-500 text-[11px] tabular-nums">
-                  {t}
+                  {axisFormat(t)}
                 </text>
               </g>
             ))}
@@ -238,7 +242,7 @@ export function LineChart({
               <p key={s.name} className="mt-0.5 flex items-center gap-1.5 text-zinc-300">
                 <Dot color={s.color} />
                 {s.name}
-                <span className="ml-auto pl-3 font-semibold tabular-nums text-white">{s.values[hover]}</span>
+                <span className="ml-auto pl-3 font-semibold tabular-nums text-white">{format(s.values[hover] ?? 0)}</span>
               </p>
             ))}
           </Tooltip>

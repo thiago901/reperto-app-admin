@@ -131,6 +131,7 @@ export interface Overview {
     stems: StemsSummary;
     deletions30: number;
     pushDevices: number;
+    support: { new: number; answered: number; total: number };
   };
   daily: DayPoint[];
   stemsByMonth: MonthPoint[];
@@ -162,4 +163,67 @@ export interface SystemInfo {
       origins: string[];
     };
   };
+}
+
+/* ---------------------------------------------------------- atendimento --- */
+
+export type TicketType = 'suggestion' | 'problem' | 'complaint' | 'praise' | 'question';
+export type TicketStatus = 'new' | 'answered' | 'resolved';
+
+export interface Ticket {
+  id: string;
+  uid: string;
+  email: string | null;
+  name: string | null;
+  type: TicketType;
+  status: TicketStatus;
+  messages: { from: 'user' | 'admin'; text: string; at: number }[];
+  context: Record<string, string>;
+  note?: string;
+  unreadForUser: boolean;
+  createdAt: number;
+  updatedAt: number;
+}
+
+/* ------------------------------------------------------------- finanças --- */
+
+export type EntryCategory = 'infra' | 'ia' | 'stores' | 'marketing' | 'tools' | 'taxes' | 'other';
+
+export interface FinanceEntryInput {
+  kind: 'expense' | 'revenue';
+  name: string;
+  category: EntryCategory;
+  amount: number;
+  currency: 'BRL' | 'USD';
+  recurrence: 'monthly' | 'yearly' | 'once';
+  start: string;
+  end?: string | null;
+  notes?: string;
+}
+
+export interface FinanceEntry extends FinanceEntryInput {
+  id: string;
+  createdAt: number;
+}
+
+export interface FinanceSettings {
+  planPriceBrl: number;
+  usdToBrl: number;
+  stripeFeePct: number;
+  playFeePct: number;
+}
+
+export interface FinanceMonth {
+  month: string;
+  subscribers: { stripe: number; play: number } | null;
+  revenue: { subscriptions: number; other: number; total: number };
+  expenses: { byCategory: Record<string, number>; storeFees: number; replicate: number; total: number };
+  net: number;
+}
+
+export interface FinanceReport {
+  generatedAt: number;
+  settings: FinanceSettings;
+  entries: FinanceEntry[];
+  months: FinanceMonth[];
 }

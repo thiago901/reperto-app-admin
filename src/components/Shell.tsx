@@ -4,6 +4,8 @@ import { useIsFetching } from '@tanstack/react-query';
 import {
   LuActivity,
   LuAudioLines,
+  LuHeadphones,
+  LuWallet,
   LuLayoutDashboard,
   LuLogOut,
   LuRefreshCw,
@@ -12,7 +14,7 @@ import {
   LuUsersRound,
 } from 'react-icons/lu';
 import { useAuth } from '../lib/auth';
-import { useRefresh } from '../lib/api';
+import { useOverview, useRefresh } from '../lib/api';
 import { ago } from '../lib/format';
 import { Avatar } from './ui';
 
@@ -21,8 +23,25 @@ const NAV = [
   { to: '/usuarios', label: 'Usuários', Icon: LuUsers },
   { to: '/grupos', label: 'Grupos', Icon: LuUsersRound },
   { to: '/faixas', label: 'Faixas (IA)', Icon: LuAudioLines },
+  { to: '/atendimento', label: 'Atendimento', Icon: LuHeadphones, badge: 'support' as const },
+  { to: '/financas', label: 'Finanças', Icon: LuWallet },
   { to: '/sistema', label: 'Sistema', Icon: LuServer },
 ];
+
+/** Quantas mensagens esperam resposta (vem da visão geral, já em cache). */
+function useSupportBadge() {
+  const q = useOverview();
+  return q.data?.overview.support?.new ?? 0;
+}
+
+function Badge({ n }: { n: number }) {
+  if (!n) return null;
+  return (
+    <span className="ml-auto min-w-5 rounded-full bg-primary-600 px-1.5 text-center text-[11px] font-semibold leading-5 text-white tabular-nums">
+      {n}
+    </span>
+  );
+}
 
 function Brand() {
   return (
@@ -39,6 +58,7 @@ function Brand() {
 export function Shell() {
   const { state, signOut } = useAuth();
   const user = state.status === 'admin' ? state.user : null;
+  const pending = useSupportBadge();
 
   return (
     <div className="min-h-dvh bg-ink-950 text-zinc-100 lg:grid lg:grid-cols-[240px_1fr]">
@@ -48,7 +68,7 @@ export function Shell() {
           <Brand />
         </div>
         <nav className="mt-8 flex flex-col gap-0.5" aria-label="Seções">
-          {NAV.map(({ to, label, Icon, end }) => (
+          {NAV.map(({ to, label, Icon, end, badge }) => (
             <NavLink
               key={to}
               to={to}
@@ -64,6 +84,7 @@ export function Shell() {
                 <>
                   <Icon size={18} className={isActive ? 'text-primary-400' : ''} />
                   {label}
+                  {badge && <Badge n={pending} />}
                 </>
               )}
             </NavLink>
@@ -103,19 +124,20 @@ export function Shell() {
           </button>
         </div>
         <nav className="flex gap-1 overflow-x-auto px-3 pb-2 [scrollbar-width:none]" aria-label="Seções">
-          {NAV.map(({ to, label, end }) => (
+          {NAV.map(({ to, label, end, badge }) => (
             <NavLink
               key={to}
               to={to}
               end={end}
               className={({ isActive }) =>
                 [
-                  'h-8 shrink-0 rounded-full px-3 text-xs font-medium leading-8 transition-colors',
+                  'flex h-8 shrink-0 items-center gap-1.5 rounded-full px-3 text-xs font-medium transition-colors',
                   isActive ? 'bg-white/[0.08] text-white' : 'text-zinc-400',
                 ].join(' ')
               }
             >
               {label}
+              {badge && <Badge n={pending} />}
             </NavLink>
           ))}
         </nav>

@@ -1,14 +1,19 @@
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import { auth } from './firebase';
 import type {
   AdminGroup,
   AdminStemJob,
   AdminUser,
+  FinanceEntryInput,
+  FinanceReport,
+  FinanceSettings,
   MonthPoint,
   Overview,
   StemsSummary,
   SystemInfo,
+  Ticket,
+  TicketStatus,
   TopGroup,
 } from './types';
 
@@ -26,18 +31,25 @@ export class ApiError extends Error {
   }
 }
 
-export async function api<T>(path: string): Promise<T> {
+export async function api<T>(path: string, init?: { method?: string; body?: unknown }): Promise<T> {
   if (DEMO) {
     const { demoResponse } = await import('./demo');
     await new Promise((r) => setTimeout(r, 300));
-    return demoResponse(path) as T;
+    return demoResponse(path, init) as T;
   }
   const user = auth.currentUser;
   if (!user) throw new ApiError(401, 'Sessão encerrada.');
   const token = await user.getIdToken();
   let res: Response;
   try {
-    res = await fetch(`${BASE}/v1/${APP_ID}${path}`, { headers: { Authorization: `Bearer ${token}` } });
+    res = await fetch(`${BASE}/v1/${APP_ID}${path}`, {
+      method: init?.method ?? 'GET',
+      headers: {
+        Authorization: `Bearer ${token}`,
+        ...(init?.body !== undefined ? { 'Content-Type': 'application/json' } : {}),
+      },
+      body: init?.body !== undefined ? JSON.stringify(init.body) : undefined,
+    });
   } catch {
     throw new ApiError(0, 'Não foi possível falar com o servidor. Confira a URL da API e as origens (CORS).');
   }
@@ -71,6 +83,39 @@ export const useStems = () =>
     jobs: AdminStemJob[];
   }>('stems', '/admin/stems');
 export const useSystem = () => useAdmin<SystemInfo>('system', '/admin/system');
+export const useSupport = () => useAdmin<{ generatedAt: number; tickets: Ticket[] }>('support', '/admin/support');
+export const useFinance = () => useAdmin<FinanceReport>('finance', '/admin/finance');
+
+/** Escritas do painel: ao terminar, recarrega a tela (e a visão geral). */
+function useWrite<V>(fn: (v: V) => Promise<unknown>, keys: string[]) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: fn,
+    onSuccess: () => Promise.all(keys.map((k) => qc.invalidateQueries({ queryKey: ['admin', k] }))),
+  });
+}
+
+export const useUpdateTicket = () =>
+  useWrite(
+    ({ id, ...body }: { id: string; status?: TicketStatus; note?: string; reply?: string }) =>
+      api(`/admin/support/${id}`, { method: 'POST', body }),
+    ['support', 'overview'],
+  );
+
+export const useSaveEntry = () =>
+  useWrite(
+    ({ id, ...body }: FinanceEntryInput & { id?: string }) =>
+      id
+        ? api(`/admin/finance/entries/${id}`, { method: 'PUT', body })
+        : api('/admin/finance/entries', { method: 'POST', body }),
+    ['finance'],
+  );
+
+export const useDeleteEntry = () =>
+  useWrite((id: string) => api(`/admin/finance/entries/${id}`, { method: 'DELETE' }), ['finance']);
+
+export const useSaveFinanceSettings = () =>
+  useWrite((body: FinanceSettings) => api('/admin/finance/settings', { method: 'PUT', body }), ['finance']);
 
 /** Refaz o retrato no servidor e recarrega o que estiver na tela. */
 export function useRefresh() {

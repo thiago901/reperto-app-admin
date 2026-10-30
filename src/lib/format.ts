@@ -75,3 +75,11 @@ export function initials(name: string | null, email: string | null): string {
 
 /** Sem acento e minúsculo, para a busca. */
 export const searchKey = (s: string) => s.normalize('NFD').replace(/\p{M}/gu, '').toLowerCase();
+
+const brlFmt = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' });
+const brlShort = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 });
+export const brl = (n: number) => brlFmt.format(n);
+/** Para eixos: sem centavos. */
+export const brlAxis = (n: number) => brlShort.format(n);
+/** Resultado com sinal explícito (não depende só da cor). */
+export const signedBrl = (n: number) => (n > 0 ? `+${brl(n)}` : n < 0 ? `−${brl(-n)}` : brl(0));

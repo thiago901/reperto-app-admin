@@ -21,7 +21,11 @@ export const TYPE_META: Record<TicketType, { label: string; color: string }> = {
   suggestion: { label: 'Sugestão', color: '#199e70' },
   question: { label: 'Dúvida', color: '#c98500' },
   praise: { label: 'Elogio', color: '#d55181' },
+  missing: { label: 'Não encontrou', color: '#8f7cf0' },
 };
+
+/** Quem escreveu, para quem não tem nome cadastrado nem conta. */
+const who = (t: Ticket) => t.name || t.email || (t.uid ? 'Sem nome' : 'Visitante do site');
 
 const STATUS_META: Record<TicketStatus, { label: string; color: string }> = {
   new: { label: 'Aguardando você', color: STATUS.warning },
@@ -64,7 +68,7 @@ export function SupportPage() {
     <>
       <PageHeader
         title="Atendimento"
-        subtitle="Sugestões, problemas, reclamações e elogios enviados pelo app."
+        subtitle="Sugestões, problemas, reclamações e elogios enviados pelo app, e mensagens de quem visitou o site."
         generatedAt={q.data.generatedAt}
       />
 
@@ -117,7 +121,7 @@ export function SupportPage() {
                       <Avatar name={t.name} email={t.email} size={34} />
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center justify-between gap-2">
-                          <p className="truncate text-sm font-medium text-zinc-100">{t.name || t.email}</p>
+                          <p className="truncate text-sm font-medium text-zinc-100">{who(t)}</p>
                           <span className="shrink-0 text-xs text-zinc-500">{ago(t.updatedAt)}</span>
                         </div>
                         <p className="mt-0.5 flex items-center gap-1.5 text-xs text-zinc-400">
@@ -188,8 +192,10 @@ function TicketDetail({ ticket: t, onBack }: { ticket: Ticket; onBack: () => voi
         </button>
         <Avatar name={t.name} email={t.email} size={38} />
         <div className="min-w-0 flex-1">
-          <p className="truncate text-sm font-semibold text-white">{t.name || 'Sem nome'}</p>
-          <p className="truncate text-xs text-zinc-400">{t.email}</p>
+          <p className="truncate text-sm font-semibold text-white">{who(t)}</p>
+          <p className="truncate text-xs text-zinc-400">
+            {t.uid ? t.email : t.email ? `Sem conta no app · ${t.email}` : 'Sem conta no app e sem e-mail'}
+          </p>
           <p className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-zinc-400">
             <span className="inline-flex items-center gap-1.5">
               <Dot color={TYPE_META[t.type].color} />
@@ -251,6 +257,13 @@ function TicketDetail({ ticket: t, onBack }: { ticket: Ticket; onBack: () => voi
         ))}
       </ol>
 
+      {!t.uid ? (
+        <p className="border-t border-white/[0.06] px-5 py-4 text-sm text-zinc-400">
+          {t.email
+            ? 'Quem mandou não tem conta no app, então não há sino para avisar. Responda pelo botão de e-mail acima.'
+            : 'Quem mandou não tem conta no app e não deixou e-mail, então não há como responder.'}
+        </p>
+      ) : (
       <div className="border-t border-white/[0.06] px-5 py-4">
         <textarea
           value={reply}
@@ -286,6 +299,7 @@ function TicketDetail({ ticket: t, onBack }: { ticket: Ticket; onBack: () => voi
           </button>
         </div>
       </div>
+      )}
 
       <div className="grid gap-4 border-t border-white/[0.06] px-5 py-4 sm:grid-cols-2">
         <div>
@@ -329,4 +343,9 @@ const CONTEXT_LABEL: Record<string, string> = {
   platform: 'Plataforma',
   standalone: 'App instalado',
   screen: 'Tela',
+  source: 'Origem',
+  page: 'Página',
+  language: 'Idioma',
+  timeZone: 'Fuso horário',
+  referrer: 'Veio de',
 };

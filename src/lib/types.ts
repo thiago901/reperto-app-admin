@@ -167,12 +167,13 @@ export interface SystemInfo {
 
 /* ---------------------------------------------------------- atendimento --- */
 
-export type TicketType = 'suggestion' | 'problem' | 'complaint' | 'praise' | 'question';
+export type TicketType = 'suggestion' | 'problem' | 'complaint' | 'praise' | 'question' | 'missing';
 export type TicketStatus = 'new' | 'answered' | 'resolved';
 
 export interface Ticket {
   id: string;
-  uid: string;
+  /** `null`: visitante do site, sem conta no app. */
+  uid: string | null;
   email: string | null;
   name: string | null;
   type: TicketType;

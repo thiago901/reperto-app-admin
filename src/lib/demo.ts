@@ -225,6 +225,7 @@ const TEXTS: [Ticket['type'], string][] = [
   ['question', 'Como faço para transpor a cifra só para o violão?'],
   ['suggestion', 'Dava para ter um metrônomo junto do player?'],
   ['problem', 'Não consigo convidar uma pessoa pelo link, diz que expirou.'],
+  ['missing', 'Procurava um jeito de imprimir a cifra com a letra grande para o idoso do coral.'],
 ];
 let tickets: Ticket[] = TEXTS.map(([type, text], i) => {
   const u = users[i * 3];
@@ -232,16 +233,19 @@ let tickets: Ticket[] = TEXTS.map(([type, text], i) => {
   const answered = i === 3 || i === 4;
   return {
     id: `t${i}`,
-    uid: u.uid,
-    email: u.email,
-    name: u.name,
+    // O último exemplo é um visitante do site, sem conta.
+    ...(type === 'missing'
+      ? { uid: null, email: 'visitante@exemplo.com', name: null }
+      : { uid: u.uid, email: u.email, name: u.name }),
     type,
     status: i === 5 ? 'resolved' : answered ? 'answered' : 'new',
     messages: [
       { from: 'user', text, at },
       ...(answered ? [{ from: 'admin' as const, text: 'Oi! Obrigado por escrever. Já estamos vendo isso.', at: at + 3600_000 }] : []),
     ],
-    context: { platform: i % 2 ? 'android' : 'web', standalone: String(i % 2 === 0), screen: '412x915' },
+    context: (type === 'missing'
+        ? { source: 'site', page: 'saída do site', language: 'pt-BR', timeZone: 'America/Sao_Paulo', screen: '1440x900' }
+        : { platform: i % 2 ? 'android' : 'web', standalone: String(i % 2 === 0), screen: '412x915' }) as Record<string, string>,
     unreadForUser: answered,
     createdAt: at,
     updatedAt: answered ? at + 3600_000 : at,
